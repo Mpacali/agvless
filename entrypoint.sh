@@ -16,13 +16,10 @@ SINGBOX_LISTEN_PORT=8080
 echo "Sing-box 监听端口: $SINGBOX_LISTEN_PORT"
 
 # 2. 生成自签名 TLS 证书和密钥
-# 这里我们使用一个占位符域名来生成证书，因为最终的访问域名是 Cloudflared 临时隧道给的
-# 实际连接时，客户端会通过 Cloudflare 的域名连接，而 Sing-box 内部会使用这个自签名证书
-# 但由于 Cloudflare 隧道已处理外部 TLS，这里的证书主要是为了满足 Sing-box 的 TLS 配置要求
 echo "正在生成自签名 TLS 证书和密钥..."
 CERT_PATH="/app/cert.pem"
 KEY_PATH="/app/key.pem"
-SELF_SIGNED_DOMAIN="example.com" # 证书中的通用名称，可以是一个占位符，不影响Cloudflare隧道
+SELF_SIGNED_DOMAIN="example.com" # 证书中的通用名称，可以是一个占位符
 
 openssl genrsa -out "$KEY_PATH" 2048
 openssl req -new -x509 -key "$KEY_PATH" -out "$CERT_PATH" -days 3650 \
@@ -61,15 +58,15 @@ cat <<EOF > "$SINGBOX_CONFIG_FILE"
         "enabled": true,
         "certificate_path": "$CERT_PATH",
         "key_path": "$KEY_PATH",
-        "server_name": "YOUR_DOMAIN_PLACEHOLDER", # 占位符，将在 VLESS 链接中替换
+        "server_name": "YOUR_DOMAIN_PLACEHOLDER",
         "min_version": "1.2",
-        "insecure": true # 对于自签名证书，客户端通常需要设置 insecure 或跳过证书验证
+        "insecure": true
       },
       "transport": {
         "type": "ws",
         "path": "$VLESS_WS_PATH",
         "headers": {
-          "Host": "YOUR_DOMAIN_PLACEHOLDER" # 占位符，将在 VLESS 链接中替换
+          "Host": "YOUR_DOMAIN_PLACEHOLDER"
         }
       }
     }
@@ -91,8 +88,8 @@ cat <<EOF > "$SINGBOX_CONFIG_FILE"
         "inbound": "vless-in",
         "outbound": "direct"
       }
-    ],
-    "default_outbound": "direct"
+    ]
+    # 移除 default_outbound 字段
   }
 }
 EOF
@@ -104,6 +101,13 @@ echo "正在启动 Sing-box..."
 /usr/local/bin/sing-box run -c "$SINGBOX_CONFIG_FILE" &
 SINGBOX_PID=$! # 获取 Sing-box 的进程 ID
 
+# 检查 Sing-box 是否成功启动
+if ! ps -p "$SINGBOX_PID" > /dev/null; then
+    echo "错误：Sing-box 启动失败。请检查 Sing-box 配置或日志。"
+    # 打印 Sing-box 的启动日志
+    cat /app/sing-box-config.json
+    exit 1
+fi
 echo "Sing-box 已启动 (PID: $SINGBOX_PID)"
 
 # 确保 Sing-box 已经开始监听，短暂等待
@@ -111,9 +115,13 @@ sleep 2
 
 # 5. 启动 Cloudflared 临时隧道
 echo "正在启动 Cloudflared 临时隧道..."
+# Cloudflared 临时隧道会返回一个公共 URL，我们需要捕获它
+# 使用 `stdbuf -oL` 确保实时输出，并使用 `grep` 捕获 URL
+# 注意：临时隧道可能需要一些时间来建立连接
 CLOUDFLARED_OUTPUT=$(stdbuf -oL /usr/local/bin/cloudflared tunnel --url "http://localhost:$SINGBOX_LISTEN_PORT" 2>&1)
 echo "$CLOUDFLARED_OUTPUT" # 打印 Cloudflared 的所有输出，方便调试
 
+# 尝试从 Cloudflared 输出中提取 URL
 TUNNEL_URL=$(echo "$CLOUDFLARED_OUTPUT" | grep -oE "https://[^[:space:]]+" | head -n 1)
 
 if [ -z "$TUNNEL_URL" ]; then
@@ -126,9 +134,8 @@ echo "Cloudflared 隧道 URL: $TUNNEL_URL"
 echo "Cloudflared 隧道域名: $TUNNEL_HOST"
 
 # 6. 构建 VLESS 链接
-# 对于自签名证书，我们需要在 VLESS 链接中添加 "allowInsecure=1" 或等效参数
-# Sing-box 客户端通常通过 "tls.insecure = true" 来处理
-# 这里我们假设客户端可以直接识别 "allowInsecure=1" 或者您手动设置
+# 对于自签名证书，我们会在 VLESS 链接中明确指示客户端不安全连接
+# 客户端通常会通过 "tls.insecure=true" 或 "allowInsecure=1" 来处理
 VLESS_LINK="vless://${VLESS_UUID}@${TUNNEL_HOST}:443?security=tls&type=ws&path=${VLESS_WS_PATH}&fp=random&alpn=h2,http/1.1&flow=xtls-rprx-vision&tls.insecure=true#Cloudflare_Tunnel_SelfSigned_VLESS_Node"
 
 echo "---"
