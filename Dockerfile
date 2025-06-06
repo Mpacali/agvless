@@ -2,7 +2,8 @@
 FROM alpine:latest
 
 # 安装必要的工具
-RUN apk add --no-cache curl unzip openssl bash # 添加 bash，因为 entrypoint.sh 使用了一些 bash 特性
+# 添加 bash 和 coreutils
+RUN apk add --no-cache curl unzip openssl bash coreutils
 
 # 下载并安装Sing-box
 ARG SINGBOX_VERSION="1.9.0" # 请替换为Sing-box的最新稳定版本，或者查找最新版本
