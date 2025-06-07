@@ -13,7 +13,7 @@ RUN curl -LO "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_
     rm "sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz"
 
 # 下载并安装Cloudflared
-ARG CLOUDFLARED_VERSION="2024.5.1" # 建议替换为Cloudflared的最新稳定版本
+ARG CLOUDFLARED_VERSION="2025.5.0" # <-- Corrected to 2025.5.0
 # 确保下载正确的 AMD64 版本
 RUN curl -fLO "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" && \
     mv cloudflared-linux-amd64 /usr/local/bin/cloudflared && \
