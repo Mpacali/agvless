@@ -1,35 +1,32 @@
-# 使用一个基础的Alpine Linux镜像，因为它比较比较小巧
+# Use a minimal Alpine Linux image
 FROM alpine:latest
 
-# 安装必要的工具
-# 添加 bash 和 coreutils
+# Install necessary tools
 RUN apk add --no-cache curl unzip openssl bash coreutils
 
-# 下载并安装Sing-box
+# Download and install Sing-box
 ARG SINGBOX_VERSION="1.9.0" # 建议替换为Sing-box的最新稳定版本
 RUN curl -LO "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz" && \
     tar -xzf "sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz" -C /usr/local/bin && \
     mv /usr/local/bin/sing-box-*/sing-box /usr/local/bin/sing-box && \
     rm "sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz"
 
-# 下载并安装Cloudflared (使用旧版本)
-ARG CLOUDFLARED_VERSION="2023.10.0" # 保持这个版本，假设它在运行时能输出 trycloudflare.com
-# 确保下载正确的 AMD64 版本
+# Download and install Cloudflared (指定 2025.5.0 版本)
+ARG CLOUDFLARED_VERSION="2025.5.0" # <-- 直接指定 2025.5.0 版本
 RUN curl -fLO "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" && \
     mv cloudflared-linux-amd64 /usr/local/bin/cloudflared && \
     chmod +x /usr/local/bin/cloudflared && \
-    # 额外检查：仅验证文件是否可执行，不再尝试建立隧道
-    /usr/local/bin/cloudflared --version || { echo "Cloudflared 无法执行，请检查下载或权限"; exit 1; }
+    /usr/local/bin/cloudflared --version || { echo "Cloudflared executable check failed!"; exit 1; }
 
-# 创建工作目录
+# Create working directory
 WORKDIR /app
 
-# 复制 entrypoint.sh
+# Copy entrypoint.sh
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# 暴露 Sing-box 所需的端口
+# Expose Sing-box's internal listening port (used by cloudflared)
 EXPOSE 8080
 
-# 定义容器启动时执行的命令
+# Define command to run when the container starts
 ENTRYPOINT ["/app/entrypoint.sh"]
