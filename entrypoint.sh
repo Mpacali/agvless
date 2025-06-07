@@ -97,12 +97,10 @@ echo "Sing-box 配置已生成到 $SINGBOX_CONFIG_FILE"
 
 # 4. 启动 Sing-box
 echo "正在启动 Sing-box..."
-# 将 Sing-box 的输出重定向到文件，以便调试
 /usr/local/bin/sing-box run -c "$SINGBOX_CONFIG_FILE" > /app/singbox.log 2>&1 &
 SINGBOX_PID=$! # 获取 Sing-box 的进程 ID
 
-# 检查 Sing-box 是否成功启动（通过检查进程是否存活）
-# 使用 kill -0 可以检查进程是否存在，且不会发送信号
+# 检查 Sing-box 是否成功启动
 sleep 1 # 短暂等待，确保进程有机会启动
 if ! kill -0 "$SINGBOX_PID" > /dev/null 2>&1; then
     echo "错误：Sing-box 启动失败。请检查 Sing-box 配置或日志。"
@@ -118,14 +116,20 @@ sleep 2
 
 # 5. 启动 Cloudflared 临时隧道
 echo "正在启动 Cloudflared 临时隧道..."
-# 增加 -v 参数，并将其输出重定向到 cloudflared.log 文件
-CLOUDFLARED_OUTPUT=$(stdbuf -oL /usr/local/bin/cloudflared tunnel --url "http://localhost:$SINGBOX_LISTEN_PORT" -v 2>&1 | tee /app/cloudflared.log)
-echo "$CLOUDFLARED_OUTPUT" # 打印 Cloudflared 的所有输出，方便调试
+# 将 Cloudflared 的输出重定向到文件，并尝试从中提取正确的 URL
+# 注意：临时隧道可能需要一些时间来建立连接
+# 捕获 Cloudflared 的所有输出到变量，以便后面分析
+CLOUDFLARED_FULL_OUTPUT=$(stdbuf -oL /usr/local/bin/cloudflared tunnel --url "http://localhost:$SINGBOX_LISTEN_PORT" -v 2>&1)
+echo "$CLOUDFLARED_FULL_OUTPUT" # 打印 Cloudflared 的所有输出，方便调试
 
-TUNNEL_URL=$(echo "$CLOUDFLARED_OUTPUT" | grep -oE "https://[^[:space:]]+" | head -n 1)
+# 尝试从 Cloudflared 输出中提取包含 "trycloudflare.com" 的 URL
+# 通常格式是 "https://<random_string>.trycloudflare.com"
+TUNNEL_URL=$(echo "$CLOUDFLARED_FULL_OUTPUT" | grep -oE "https://[a-zA-Z0-9-]+\.trycloudflare\.com" | head -n 1)
 
 if [ -z "$TUNNEL_URL" ]; then
-    echo "错误：未能获取 Cloudflared 隧道 URL。请检查 Cloudflared 日志。"
+    echo "错误：未能获取 Cloudflared 隧道 URL (未找到 trycloudflare.com 域名)。请检查 Cloudflared 日志或网络连接。"
+    echo "Cloudflared 完整输出："
+    echo "$CLOUDFLARED_FULL_OUTPUT" # 再次打印完整的输出以便调试
     exit 1
 fi
 
@@ -134,7 +138,6 @@ echo "Cloudflared 隧道 URL: $TUNNEL_URL"
 echo "Cloudflared 隧道域名: $TUNNEL_HOST"
 
 # 6. 构建 VLESS 链接
-# 移除 &flow=xtls-rprx-vision 以获得更广泛的兼容性
 VLESS_LINK="vless://${VLESS_UUID}@${TUNNEL_HOST}:443?security=tls&type=ws&path=${VLESS_WS_PATH}&fp=random&alpn=h2,http/1.1&tls.insecure=true#Cloudflare_Tunnel_SelfSigned_VLESS_Node"
 
 echo "---"
