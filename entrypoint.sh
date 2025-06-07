@@ -89,7 +89,6 @@ cat <<EOF > "$SINGBOX_CONFIG_FILE"
         "outbound": "direct"
       }
     ]
-    # 移除 default_outbound 字段
   }
 }
 EOF
@@ -98,30 +97,30 @@ echo "Sing-box 配置已生成到 $SINGBOX_CONFIG_FILE"
 
 # 4. 启动 Sing-box
 echo "正在启动 Sing-box..."
-/usr/local/bin/sing-box run -c "$SINGBOX_CONFIG_FILE" &
+# 将 Sing-box 的输出重定向到文件，以便调试
+/usr/local/bin/sing-box run -c "$SINGBOX_CONFIG_FILE" > /app/singbox.log 2>&1 &
 SINGBOX_PID=$! # 获取 Sing-box 的进程 ID
 
-# 检查 Sing-box 是否成功启动
-if ! ps -p "$SINGBOX_PID" > /dev/null; then
+# 检查 Sing-box 是否成功启动（通过检查进程是否存活）
+# 使用 kill -0 可以检查进程是否存在，且不会发送信号
+sleep 1 # 短暂等待，确保进程有机会启动
+if ! kill -0 "$SINGBOX_PID" > /dev/null 2>&1; then
     echo "错误：Sing-box 启动失败。请检查 Sing-box 配置或日志。"
-    # 打印 Sing-box 的启动日志
-    cat /app/sing-box-config.json
+    echo "Sing-box 启动日志内容："
+    cat /app/singbox.log # 打印 Sing-box 的详细启动日志
     exit 1
 fi
 echo "Sing-box 已启动 (PID: $SINGBOX_PID)"
+
 
 # 确保 Sing-box 已经开始监听，短暂等待
 sleep 2
 
 # 5. 启动 Cloudflared 临时隧道
 echo "正在启动 Cloudflared 临时隧道..."
-# Cloudflared 临时隧道会返回一个公共 URL，我们需要捕获它
-# 使用 `stdbuf -oL` 确保实时输出，并使用 `grep` 捕获 URL
-# 注意：临时隧道可能需要一些时间来建立连接
 CLOUDFLARED_OUTPUT=$(stdbuf -oL /usr/local/bin/cloudflared tunnel --url "http://localhost:$SINGBOX_LISTEN_PORT" 2>&1)
 echo "$CLOUDFLARED_OUTPUT" # 打印 Cloudflared 的所有输出，方便调试
 
-# 尝试从 Cloudflared 输出中提取 URL
 TUNNEL_URL=$(echo "$CLOUDFLARED_OUTPUT" | grep -oE "https://[^[:space:]]+" | head -n 1)
 
 if [ -z "$TUNNEL_URL" ]; then
@@ -134,9 +133,8 @@ echo "Cloudflared 隧道 URL: $TUNNEL_URL"
 echo "Cloudflared 隧道域名: $TUNNEL_HOST"
 
 # 6. 构建 VLESS 链接
-# 对于自签名证书，我们会在 VLESS 链接中明确指示客户端不安全连接
-# 客户端通常会通过 "tls.insecure=true" 或 "allowInsecure=1" 来处理
-VLESS_LINK="vless://${VLESS_UUID}@${TUNNEL_HOST}:443?security=tls&type=ws&path=${VLESS_WS_PATH}&fp=random&alpn=h2,http/1.1&flow=xtls-rprx-vision&tls.insecure=true#Cloudflare_Tunnel_SelfSigned_VLESS_Node"
+# 移除 &flow=xtls-rprx-vision 以获得更广泛的兼容性
+VLESS_LINK="vless://${VLESS_UUID}@${TUNNEL_HOST}:443?security=tls&type=ws&path=${VLESS_WS_PATH}&fp=random&alpn=h2,http/1.1&tls.insecure=true#Cloudflare_Tunnel_SelfSigned_VLESS_Node"
 
 echo "---"
 echo "您的 VLESS 节点链接已生成："
