@@ -11,7 +11,7 @@ RUN mkdir -p ${INSTALL_DIR}
 WORKDIR ${INSTALL_DIR}
 
 # --- 下载 sing-box (AMD64 1.11.11 版本) ---
-ENV SBOX_VERSION="1.11.11" # 指定 sing-box 版本
+ENV SBOX_VERSION="1.11.11"
 RUN echo "Downloading sing-box-${SBOX_VERSION}-linux-amd64.tar.gz..." && \
     curl -L -o sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${SBOX_VERSION}/sing-box-${SBOX_VERSION}-linux-amd64.tar.gz" || \
     curl -L -o sing-box.tar.gz "https://cdn.jsdelivr.net/gh/SagerNet/sing-box@v${SBOX_VERSION}/sing-box-${SBOX_VERSION}-linux-amd64.tar.gz" && \
@@ -25,7 +25,7 @@ RUN echo "Downloading sing-box-${SBOX_VERSION}-linux-amd64.tar.gz..." && \
     rm -rf sing-box-${SBOX_VERSION}-linux-amd64 sing-box.tar.gz
 
 # --- 下载 cloudflared (AMD64 2025.5.0 版本) ---
-ENV CF_VERSION="2025.5.0" # 指定 cloudflared 版本
+ENV CF_VERSION="2025.5.0"
 RUN echo "Downloading cloudflared-${CF_VERSION}-linux-amd64 binary..." && \
     curl -L -o cloudflared "https://github.com/cloudflare/cloudflared/releases/download/${CF_VERSION}/cloudflared-linux-amd64" || \
     curl -L -o cloudflared "https://cdn.jsdelivr.net/gh/cloudflare/cloudflared/releases/download/${CF_VERSION}/cloudflared-linux-amd64" && \
