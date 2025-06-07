@@ -1,4 +1,4 @@
-# 使用一个基础的Alpine Linux镜像，因为它比较小巧
+# 使用一个基础的Alpine Linux镜像，因为它比较比较小巧
 FROM alpine:latest
 
 # 安装必要的工具
@@ -6,17 +6,20 @@ FROM alpine:latest
 RUN apk add --no-cache curl unzip openssl bash coreutils
 
 # 下载并安装Sing-box
-ARG SINGBOX_VERSION="1.9.0" # 请替换为Sing-box的最新稳定版本，或者查找最新版本
+ARG SINGBOX_VERSION="1.9.0" # 建议替换为Sing-box的最新稳定版本
 RUN curl -LO "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz" && \
     tar -xzf "sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz" -C /usr/local/bin && \
     mv /usr/local/bin/sing-box-*/sing-box /usr/local/bin/sing-box && \
     rm "sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz"
 
 # 下载并安装Cloudflared
-ARG CLOUDFLARED_VERSION="2024.5.1" # 请替换为Cloudflared的最新稳定版本，或者查找最新版本
-RUN curl -LO "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" && \
+ARG CLOUDFLARED_VERSION="2024.5.1" # 建议替换为Cloudflared的最新稳定版本
+# 确保下载正确的 AMD64 版本
+RUN curl -fLO "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" && \
     mv cloudflared-linux-amd64 /usr/local/bin/cloudflared && \
-    chmod +x /usr/local/bin/cloudflared
+    chmod +x /usr/local/bin/cloudflared && \
+    # 额外检查：验证文件是否可执行
+    /usr/local/bin/cloudflared --version || { echo "Cloudflared 无法执行，请检查下载或权限"; exit 1; }
 
 # 创建工作目录
 WORKDIR /app
