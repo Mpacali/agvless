@@ -118,7 +118,8 @@ sleep 2
 
 # 5. 启动 Cloudflared 临时隧道
 echo "正在启动 Cloudflared 临时隧道..."
-CLOUDFLARED_OUTPUT=$(stdbuf -oL /usr/local/bin/cloudflared tunnel --url "http://localhost:$SINGBOX_LISTEN_PORT" 2>&1)
+# 增加 -v 参数，并将其输出重定向到 cloudflared.log 文件
+CLOUDFLARED_OUTPUT=$(stdbuf -oL /usr/local/bin/cloudflared tunnel --url "http://localhost:$SINGBOX_LISTEN_PORT" -v 2>&1 | tee /app/cloudflared.log)
 echo "$CLOUDFLARED_OUTPUT" # 打印 Cloudflared 的所有输出，方便调试
 
 TUNNEL_URL=$(echo "$CLOUDFLARED_OUTPUT" | grep -oE "https://[^[:space:]]+" | head -n 1)
