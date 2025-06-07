@@ -16,25 +16,47 @@ SBPID_FILE="${INSTALL_DIR}/sbpid.log"
 SBARGOPID_FILE="${INSTALL_DIR}/sbargopid.log"
 
 # --- 1. 生成或加载配置 ---
-if [ ! -f "${CONFIG_FILE}" ]; then
-    echo "Config file not found. Generating new UUID and port..."
-    # 生成随机 UUID
-    UUID=$(cat /proc/sys/kernel/random/uuid)
-    # 生成 10000 到 60000 之间的随机端口
-    VMESS_PORT=$(shuf -i 10000-60000 -n 1)
-
-    # 将 UUID 和端口保存到 config.json
+# 优先从环境变量读取 VMESS_PORT
+if [ -n "${VMESS_PORT}" ]; then
+    echo "VMESS_PORT environment variable detected: ${VMESS_PORT}"
+    # 如果 config.json 存在，读取 UUID 但不覆盖端口
+    if [ -f "${CONFIG_FILE}" ]; then
+        UUID=$(jq -r '.uuid' "${CONFIG_FILE}")
+        echo "Loaded existing UUID from config.json: ${UUID}"
+    else
+        # 如果 config.json 不存在，生成新的 UUID
+        UUID=$(cat /proc/sys/kernel/random/uuid)
+        echo "Config file not found. Generating new UUID: ${UUID}"
+    fi
+    # 强制将 UUID 和环境中的 VMESS_PORT 保存到 config.json (覆盖或新建)
     jq -n \
         --arg uuid "$UUID" \
         --argjson vmess_port "$VMESS_PORT" \
         '{uuid: $uuid, vmess_port: $vmess_port}' > "${CONFIG_FILE}"
-    echo "Generated config: UUID=${UUID}, VMESS_PORT=${VMESS_PORT}"
+    echo "Using VMESS_PORT from environment: ${VMESS_PORT}"
 else
-    echo "Config file found. Loading existing UUID and port..."
-    UUID=$(jq -r '.uuid' "${CONFIG_FILE}")
-    VMESS_PORT=$(jq -r '.vmess_port' "${CONFIG_FILE}")
-    echo "Loaded config: UUID=${UUID}, VMESS_PORT=${VMESS_PORT}"
+    # 如果环境变量没有指定，检查 config.json
+    if [ ! -f "${CONFIG_FILE}" ]; then
+        echo "Config file not found. Generating new UUID and random port..."
+        # 生成随机 UUID
+        UUID=$(cat /proc/sys/kernel/random/uuid)
+        # 生成 10000 到 60000 之间的随机端口
+        VMESS_PORT=$(shuf -i 10000-60000 -n 1)
+
+        # 将 UUID 和端口保存到 config.json
+        jq -n \
+            --arg uuid "$UUID" \
+            --argjson vmess_port "$VMESS_PORT" \
+            '{uuid: $uuid, vmess_port: $vmess_port}' > "${CONFIG_FILE}"
+        echo "Generated config: UUID=${UUID}, VMESS_PORT=${VMESS_PORT}"
+    else
+        echo "Config file found. Loading existing UUID and port from config.json..."
+        UUID=$(jq -r '.uuid' "${CONFIG_FILE}")
+        VMESS_PORT=$(jq -r '.vmess_port' "${CONFIG_FILE}")
+        echo "Loaded config: UUID=${UUID}, VMESS_PORT=${VMESS_PORT}"
+    fi
 fi
+
 
 # --- 2. 生成 sing-box 配置文件 (sb.json) ---
 echo "Generating sing-box config (sb.json)..."
@@ -159,21 +181,6 @@ NON_TLS_PORTS=(80 8080 8880)
 # 生成带 TLS 的节点链接
 for port in "${TLS_PORTS[@]}"; do
     for ip in "${CF_IPS[@]}"; do
-        # VMess 链接格式：vmess://BASE64(JSON_CONFIG)
-        # JSON_CONFIG 示例:
-        # {
-        #   "v": "2",
-        #   "ps": "CF-TLS-${port}-${ip}",
-        #   "add": "${ip}",
-        #   "port": "${port}",
-        #   "id": "${UUID}",
-        #   "aid": 0,
-        #   "net": "ws",
-        #   "type": "none",
-        #   "host": "${TLS_SNI}",
-        #   "path": "${VMESS_WS_PATH}?ed=2048",
-        #   "tls": "tls"
-        # }
         JSON_CONFIG=$(jq -n \
             --arg v "2" \
             --arg ps "CF-TLS-${port}-${ip}" \
@@ -196,9 +203,6 @@ for port in "${TLS_PORTS[@]}"; do
 done
 
 # 生成不带 TLS 的节点链接 (如果需要)
-# 注意：通过 Cloudflare Tunnel 中转的流量通常建议全程加密，
-# 非 TLS 的链接可能直接暴露你的源站 IP，或导致传输不安全。
-# 仅供参考，不推荐生产使用。
 for port in "${NON_TLS_PORTS[@]}"; do
     for ip in "${CF_IPS[@]}"; do
         JSON_CONFIG=$(jq -n \
@@ -236,7 +240,5 @@ cat "${LIST_FILE}"
 echo "-------------------------------------"
 
 # 保持容器运行
-# 跟踪 cloudflared 和 sing-box 的日志，这样容器就不会退出
-# 如果 sing-box 或 cloudflared 意外停止，容器也会停止
 wait $(cat "${SBPID_FILE}") $(cat "${SBARGOPID_FILE}")
 echo "One of the services (sing-box or cloudflared) exited. Container stopping."
