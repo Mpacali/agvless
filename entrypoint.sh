@@ -114,77 +114,29 @@ else
     CLOUDFLARED_PID=$!
 fi
 
-generate_vmess_link() {
-  ps="$1"
-  add="$2"
-  port="$3"
-  id="$4"
-  aid="$5"
-  net="$6"
-  type="$7"
-  host="$8"
-  path="$9"
-  tls="${10}"
-  sni="${11}"
-
-  # 拼接 JSON（无 jq）
-  vmess_json=$(cat <<EOF
+VMESS_JSON=$(cat <<EOF
 {
   "v": "2",
-  "ps": "$ps",
-  "add": "$add",
-  "port": "$port",
-  "id": "$id",
-  "aid": "$aid",
-  "net": "$net",
-  "type": "$type",
-  "host": "$host",
-  "path": "$path",
-  "tls": "$tls",
-  "sni": "$sni"
+  "ps": "cf_tunnel_vmess",
+  "add": "www.visa.com.tw",
+  "port": "443",
+  "id": "${VLESS_UUID}",
+  "aid": "0",
+  "net": "ws",
+  "type": "none",
+  "host": "${TUNNEL_DOMAIN}",
+  "path": "${VLESS_WS_PATH}?ed=2048",
+  "tls": "tls",
+  "sni": "${TUNNEL_DOMAIN}"
 }
 EOF
 )
 
-  # 使用 openssl 进行 base64 编码（无换行）
-  vmess_b64=$(echo "$vmess_json" | openssl base64 -A)
-  echo "vmess://$vmess_b64"
-}
+# 编码成 base64（使用 openssl 防止 base64 命令缺失）
+VMESS_LINK="vmess://$(echo "$VMESS_JSON" | openssl base64 -A)"
+echo "$VMESS_LINK"
 
-# 生成链接
-generate_links() {
-  TUNNEL_DOMAIN="$1"
-  PORT_VM_WS="$2"
-  VLESS_UUID="$3"
 
-  WS_PATH="/${VLESS_UUID}-vm"
-  WS_PATH_FULL="${WS_PATH}?ed=2048"
-  HOSTNAME=$(hostname)
-
-  echo "生成链接: TUNNEL_DOMAIN=${TUNNEL_DOMAIN}, PORT=${PORT_VM_WS}, UUID=${VLESS_UUID}"
-  echo "WebSocket路径: ${WS_PATH_FULL}"
-
-  PS="vmess-ws-tls-argo-${HOSTNAME}-443"
-  ADD="104.16.0.0"
-  PORT="443"
-  AID="0"
-  NET="ws"
-  TYPE="none"
-  HOST="$TUNNEL_DOMAIN"
-  PATH="$WS_PATH_FULL"
-  TLS="tls"
-  SNI="$TUNNEL_DOMAIN"
-
-  VMESS_LINK=$(generate_vmess_link "$PS" "$ADD" "$PORT" "$VLESS_UUID" "$AID" "$NET" "$TYPE" "$HOST" "$PATH" "$TLS" "$SNI")
-
-  echo ""
-  echo "=== 生成的 VMess 链接 ==="
-  echo "$VMESS_LINK"
-  echo ""
-}
-
-# 调用方式（从环境变量中获取）
-generate_links "$TUNNEL_DOMAIN" "$TUNNEL_PORT" "$VLESS_UUID"
 
 # 保持运行
 wait "$SINGBOX_PID"
