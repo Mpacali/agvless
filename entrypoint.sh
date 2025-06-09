@@ -287,9 +287,26 @@ echo "--- Sing-box 配置内容 (sing-box-config.json) ---"
 cat "$SINGBOX_CONFIG_FILE"
 echo "--- End of Sing-box Config ---"
 
+echo "--- TLS 自签证书 (cert.pem) 内容 ---"
+cat "$CERT_PATH"
+echo "--- End of cert.pem ---"
+
+echo "--- TLS 私钥 (key.pem) 内容 ---"
+cat "$KEY_PATH"
+echo "--- End of key.pem ---"
+
 echo "--- Cloudflared 日志内容 ---"
 cat "$CLOUDFLARED_LOG_FILE"
 echo "--- End of Cloudflared Log ---"
+
+# 打印 Cloudflared 配置文件路径（如果有）
+if [ -f /root/.cloudflared/config.yml ]; then
+  echo "--- Cloudflared 配置文件内容 (/root/.cloudflared/config.yml) ---"
+  cat /root/.cloudflared/config.yml
+  echo "--- End of config.yml ---"
+else
+  echo "未找到 Cloudflared 配置文件 (/root/.cloudflared/config.yml)"
+fi
 
 # Keep the container running by waiting for Sing-box to finish
 wait "$SINGBOX_PID"
