@@ -31,6 +31,7 @@ VLESS_UUID=$(cat /proc/sys/kernel/random/uuid)
 VLESS_WS_PATH="/${VLESS_UUID}?ed=2048"
 echo "UUID: $VLESS_UUID"
 echo "WebSocket 路径: $VLESS_WS_PATH"
+echo "监听端口：$INTERNAL_LISTEN_PORT"
 
 SINGBOX_CONFIG_FILE="/app/sing-box-config.json"
 CLOUDFLARED_LOG_FILE="/app/cloudflared.log"
