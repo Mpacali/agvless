@@ -3,7 +3,7 @@ set -e
 
 echo "启动 VLESS + Cloudflare 隧道配置"
 
-# 设置默认值
+# 默认配置
 TUNNEL_TYPE="${TUNNEL_TYPE:-fixed}"
 INTERNAL_LISTEN_PORT="${INTERNAL_LISTEN_PORT:-8080}"
 CLOUDFLARE_TLS_PORTS="443 8443 2053 2083 2087 2096"
@@ -11,7 +11,7 @@ CLOUDFLARE_TLS_PORTS="443 8443 2053 2083 2087 2096"
 TUNNEL_DOMAIN="${TUNNEL_DOMAIN}"
 TUNNEL_TOKEN="${TUNNEL_TOKEN}"
 
-# 校验参数
+# 校验隧道模式
 if [ "$TUNNEL_TYPE" = "fixed" ]; then
     if [ -z "$TUNNEL_DOMAIN" ] || [ -z "$TUNNEL_TOKEN" ]; then
         echo "错误：fixed 模式下必须设置 TUNNEL_DOMAIN 和 TUNNEL_TOKEN。"
@@ -29,13 +29,13 @@ fi
 # UUID 和路径
 VLESS_UUID=$(cat /proc/sys/kernel/random/uuid)
 VLESS_WS_PATH="/${VLESS_UUID}?ed=2048"
-echo "生成的 UUID: $VLESS_UUID"
+echo "UUID: $VLESS_UUID"
 echo "WebSocket 路径: $VLESS_WS_PATH"
 
 SINGBOX_CONFIG_FILE="/app/sing-box-config.json"
 CLOUDFLARED_LOG_FILE="/app/cloudflared.log"
 
-# 启动 cloudflared
+# 启动 Cloudflared
 if [ "$TUNNEL_TYPE" = "temp" ]; then
     echo "启动临时 Cloudflared 隧道..."
     /usr/local/bin/cloudflared tunnel --url "http://localhost:$INTERNAL_LISTEN_PORT${VLESS_WS_PATH}" --edge-ip-version auto --no-autoupdate --protocol http2 > "$CLOUDFLARED_LOG_FILE" 2>&1 &
@@ -53,14 +53,14 @@ if [ "$TUNNEL_TYPE" = "temp" ]; then
         exit 1
     fi
     TUNNEL_DOMAIN="$EXTRACTED_DOMAIN"
-    echo "提取到临时域名: $TUNNEL_DOMAIN"
+    echo "获取到临时域名：$TUNNEL_DOMAIN"
 else
     echo "启动固定 Cloudflared 隧道..."
     /usr/local/bin/cloudflared tunnel run --token "$TUNNEL_TOKEN" --url "http://localhost:$INTERNAL_LISTEN_PORT${VLESS_WS_PATH}" > "$CLOUDFLARED_LOG_FILE" 2>&1 &
     CLOUDFLARED_PID=$!
 fi
 
-# 生成 Sing-box 配置
+# 生成 sing-box 配置（移除 decryption 和 sniffing）
 echo "生成 Sing-box 配置..."
 cat <<EOF > "$SINGBOX_CONFIG_FILE"
 {
@@ -85,7 +85,7 @@ cat <<EOF > "$SINGBOX_CONFIG_FILE"
         "headers": {
           "Host": "$TUNNEL_DOMAIN"
         }
-      },
+      }
     }
   ],
   "outbounds": [
@@ -120,16 +120,16 @@ if ! kill -0 "$SINGBOX_PID" > /dev/null 2>&1; then
     cat /app/singbox.log
     exit 1
 fi
-echo "Sing-box 成功启动 (PID: $SINGBOX_PID)"
+echo "Sing-box 启动成功 (PID: $SINGBOX_PID)"
 
 # 输出 VLESS 链接
 echo "---"
-echo "VLESS 多端口链接："
+echo "VLESS 多端口链接如下："
 for PORT in $CLOUDFLARE_TLS_PORTS; do
     echo "vless://${VLESS_UUID}@www.visa.com.tw:${PORT}?encryption=none&security=tls&sni=${TUNNEL_DOMAIN}&host=${TUNNEL_DOMAIN}&fp=chrome&type=ws&path=${VLESS_WS_PATH}#cf_tunnel_vless_${PORT}"
 done
 echo "---"
 
-# 持续运行
+# 保持运行
 wait "$SINGBOX_PID"
 kill "$CLOUDFLARED_PID" 2>/dev/null || true
