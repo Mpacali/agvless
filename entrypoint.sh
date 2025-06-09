@@ -283,6 +283,14 @@ echo "您的 VLESS 节点链接已生成："
 echo "$VLESS_LINK"
 echo "---"
 
+echo "--- Sing-box 配置内容 (sing-box-config.json) ---"
+cat "$SINGBOX_CONFIG_FILE"
+echo "--- End of Sing-box Config ---"
+
+echo "--- Cloudflared 日志内容 ---"
+cat "$CLOUDFLARED_LOG_FILE"
+echo "--- End of Cloudflared Log ---"
+
 # Keep the container running by waiting for Sing-box to finish
 wait "$SINGBOX_PID"
 echo "Sing-box 进程已终止。"
