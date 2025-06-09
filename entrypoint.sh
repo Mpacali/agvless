@@ -5,7 +5,7 @@ echo "正在准备环境变量..."
 
 TUNNEL_TYPE="${TUNNEL_TYPE:-fixed}"
 INTERNAL_LISTEN_PORT="${INTERNAL_LISTEN_PORT:-8080}"
-CLOUDFLARE_TLS_PORTS=("443" "8443" "2053" "2083" "2087" "2096")
+CLOUDFLARE_TLS_PORTS="443 8443 2053 2083 2087 2096"
 
 TUNNEL_DOMAIN="${TUNNEL_DOMAIN}"
 TUNNEL_TOKEN="${TUNNEL_TOKEN}"
@@ -134,7 +134,7 @@ echo "Sing-box 成功启动 (PID: $SINGBOX_PID)"
 # 输出 VLESS 链接
 echo "---"
 echo "VLESS 节点链接如下："
-for PORT in "${CLOUDFLARE_TLS_PORTS[@]}"; do
+for PORT in $CLOUDFLARE_TLS_PORTS; do
     echo "vless://${VLESS_UUID}@www.visa.com.tw:${PORT}?encryption=none&security=tls&sni=${TUNNEL_DOMAIN}&host=${TUNNEL_DOMAIN}&fp=chrome&type=ws&path=${VLESS_WS_PATH}#cf_tunnel_vless_${PORT}"
 done
 echo "---"
