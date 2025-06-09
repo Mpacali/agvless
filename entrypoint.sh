@@ -41,23 +41,30 @@ echo "生成 Sing-box 配置..."
 cat <<EOF > "$SINGBOX_CONFIG_FILE"
 {
   "log": {
-    "level": "info"
+    "level": "info",
+    "timestamp": true
   },
   "inbounds": [
     {
-      "type": "vless",
-      "tag": "vless-in",
+      "type": "vmess",
+      "tag": "vmess-in",
       "listen": "127.0.0.1",
       "listen_port": $INTERNAL_LISTEN_PORT,
+      "tcp_fast_open": true,
+      "sniff": true,
+      "sniff_override_destination": true,
+      "proxy_protocol": false,
       "users": [
         {
           "uuid": "$VLESS_UUID",
-          "flow": ""
+          "alterId": 0
         }
       ],
       "transport": {
         "type": "ws",
-        "path": "$VLESS_WS_PATH"
+        "path": "$VLESS_WS_PATH",
+        "max_early_data": 2048,
+        "early_data_header_name": "Sec-WebSocket-Protocol"
       }
     }
   ],
@@ -65,21 +72,8 @@ cat <<EOF > "$SINGBOX_CONFIG_FILE"
     {
       "type": "direct",
       "tag": "direct"
-    },
-    {
-      "type": "block",
-      "tag": "block"
     }
-  ],
-  "route": {
-    "rules": [
-      {
-        "port": $INTERNAL_LISTEN_PORT,
-        "inbound": "vless-in",
-        "outbound": "direct"
-      }
-    ]
-  }
+  ]
 }
 EOF
 
@@ -120,13 +114,87 @@ else
     CLOUDFLARED_PID=$!
 fi
 
-# 输出 VLESS 多端口链接
-echo "---"
-echo "VLESS 多端口链接如下："
-for PORT in $CLOUDFLARE_TLS_PORTS; do
-    echo "vless://${VLESS_UUID}@www.visa.com.tw:${PORT}?encryption=none&security=tls&sni=${TUNNEL_DOMAIN}&fp=chrome&type=ws&path=${VLESS_WS_PATH}#cf_tunnel_vless_${PORT}"
-done
-echo "---"
+generate_vmess_link() {
+  ps="$1"
+  add="$2"
+  port="$3"
+  id="$4"
+  aid="$5"
+  net="$6"
+  type="$7"
+  host="$8"
+  path="$9"
+  tls="${10}"
+  sni="${11}"
+
+  vmess_json=$(jq -n \
+    --arg v "2" \
+    --arg ps "$ps" \
+    --arg add "$add" \
+    --arg port "$port" \
+    --arg id "$id" \
+    --arg aid "$aid" \
+    --arg net "$net" \
+    --arg type "$type" \
+    --arg host "$host" \
+    --arg path "$path" \
+    --arg tls "$tls" \
+    --arg sni "$sni" \
+    '{
+      v: $v,
+      ps: $ps,
+      add: $add,
+      port: $port,
+      id: $id,
+      aid: $aid,
+      net: $net,
+      type: $type,
+      host: $host,
+      path: $path,
+      tls: $tls,
+      sni: $sni
+    }'
+  )
+
+  vmess_b64=$(echo "$vmess_json" | base64 -w 0)
+  echo "vmess://$vmess_b64"
+}
+
+# 生成链接
+generate_links() {
+  TUNNEL_DOMAIN="$1"
+  PORT_VM_WS="$2"
+  VLESS_UUID="$3"
+
+  WS_PATH="/${VLESS_UUID}-vm"
+  WS_PATH_FULL="${WS_PATH}?ed=2048"
+  HOSTNAME=$(hostname)
+
+  echo "生成链接: TUNNEL_DOMAIN=${TUNNEL_DOMAIN}, PORT=${PORT_VM_WS}, UUID=${VLESS_UUID}"
+  echo "WebSocket路径: ${WS_PATH_FULL}"
+
+  PS="vmess-ws-tls-argo-${HOSTNAME}-443"
+  ADD="104.16.0.0"
+  PORT="443"
+  AID="0"
+  NET="ws"
+  TYPE="none"
+  HOST="$TUNNEL_DOMAIN"
+  PATH="$WS_PATH_FULL"
+  TLS="tls"
+  SNI="$TUNNEL_DOMAIN"
+
+  VMESS_LINK=$(generate_vmess_link "$PS" "$ADD" "$PORT" "$VLESS_UUID" "$AID" "$NET" "$TYPE" "$HOST" "$PATH" "$TLS" "$SNI")
+
+  echo ""
+  echo "=== 生成的 VMess 链接 ==="
+  echo "$VMESS_LINK"
+  echo ""
+}
+
+# 示例调用（可以改为从环境变量或入参获取）
+# 参数: TUNNEL_DOMAIN PORT_VM_WS VLESS_UUID
+generate_links "$TUNNEL_DOMAIN" "$TUNNEL_PORT" "$VLESS_UUID"
 
 # 保持运行
 wait "$SINGBOX_PID"
