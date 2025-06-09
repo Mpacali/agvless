@@ -79,7 +79,6 @@ cat <<EOF > "$SINGBOX_CONFIG_FILE"
           "flow": ""
         }
       ],
-      "decryption": "none",
       "transport": {
         "type": "ws",
         "path": "$VLESS_WS_PATH",
