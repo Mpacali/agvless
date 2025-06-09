@@ -86,11 +86,6 @@ cat <<EOF > "$SINGBOX_CONFIG_FILE"
           "Host": "$TUNNEL_DOMAIN"
         }
       },
-      "sniffing": {
-        "enabled": true,
-        "dest_override": ["http", "tls", "quic"],
-        "metadata_only": false
-      }
     }
   ],
   "outbounds": [
