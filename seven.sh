@@ -1,5 +1,7 @@
 #!/bin/bash
 
+PORT=${PORT:-2777}
+
 # 确保必要的命令存在
 command -v /usr/local/bin/sing-box >/dev/null 2>&1 || { echo "错误：未找到 sing-box。"; exit 1; }
 command -v /usr/local/bin/cloudflared >/dev/null 2>&1 || { echo "错误：未找到 cloudflared。"; exit 1; }
@@ -23,7 +25,7 @@ cat > seven.json <<EOF
 {
   "log": { "disabled": false, "level": "info", "timestamp": true },
   "inbounds": [
-    { "type": "vless", "tag": "proxy", "listen": "::", "listen_port": 2777,
+    { "type": "vless", "tag": "proxy", "listen": "::", "listen_port": ${PORT},
       "users": [ { "uuid": "${EFFECTIVE_UUID}", "flow": "" } ],
       "transport": { "type": "ws", "path": "/${EFFECTIVE_UUID}", "max_early_data": 2048, "early_data_header_name": "Sec-WebSocket-Protocol" }
     }
@@ -31,7 +33,7 @@ cat > seven.json <<EOF
   "outbounds": [ { "type": "direct", "tag": "direct" } ]
 }
 EOF
-echo "seven.json 已创建 (端口: 2777)。"
+echo "seven.json 已创建 (端口: ${PORT})。"
 
 nohup /usr/local/bin/sing-box run -c seven.json > /dev/null 2>&1 &
 sleep 2
@@ -39,13 +41,11 @@ ps | grep "sing-box" | grep -v 'grep'
 echo "sing-box 已启动。"
 echo "--------------------------------------------------"
 
-
 # --- Cloudflare Tunnel 处理 ---
 TUNNEL_MODE=""
 FINAL_DOMAIN=""
 TUNNEL_CONNECTED=false
 
-# 检查是否使用固定隧道
 if [ -n "$token" ] && [ -n "$domain" ]; then
     TUNNEL_MODE="固定隧道 (Fixed Tunnel)"
     FINAL_DOMAIN="$domain"
@@ -65,12 +65,11 @@ if [ -n "$token" ] && [ -n "$domain" ]; then
         echo -n "."
     done
     echo ""
-
 else
     TUNNEL_MODE="临时隧道 (Temporary Tunnel)"
     echo "未提供 token 和/或 domain 环境变量，将使用【临时隧道模式】。"
     echo "正在启动临时的 Cloudflare 隧道..."
-    nohup /usr/local/bin/cloudflared tunnel --url http://localhost:2777 --edge-ip-version auto --no-autoupdate --protocol http2 > ./seven.log 2>&1 &
+    nohup /usr/local/bin/cloudflared tunnel --url http://localhost:${PORT} --edge-ip-version auto --no-autoupdate --protocol http2 > ./seven.log 2>&1 &
 
     echo "正在等待 Cloudflare 临时隧道 URL... (最多 30 秒)"
     for attempt in $(seq 1 15); do
@@ -86,7 +85,6 @@ else
     echo ""
 fi
 
-# --- 输出结果 ---
 if [ "$TUNNEL_CONNECTED" = "true" ]; then
     echo "--------------------------------------------------"
     echo "$TUNNEL_MODE 已成功连接！"
@@ -95,7 +93,7 @@ if [ "$TUNNEL_CONNECTED" = "true" ]; then
     echo ""
 
     LINKS_FILE="vless_links.txt"
-    name="cf_tunnel" # 通用名称
+    name="cf_tunnel"
     path_encoded="%2F${EFFECTIVE_UUID}%3Fed%3D2048"
 
     echo "vless://${EFFECTIVE_UUID}@www.visa.com.tw:443?encryption=none&security=tls&sni=${FINAL_DOMAIN}&host=${FINAL_DOMAIN}&fp=chrome&type=ws&path=${path_encoded}#${name}_visa_tw_443" > $LINKS_FILE
