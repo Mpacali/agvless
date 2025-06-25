@@ -29,7 +29,7 @@ if [ -n "$token" ] && [ -n "$domain" ]; then
 
     echo "Waiting 30s"
     TUNNEL_CONNECTED=true
-    for attempt in $(seq 1 15); do
+    for attempt in $(seq 1 5); do
         sleep 2
         echo -n "."
     done
