@@ -64,5 +64,5 @@ echo "vless://${EFFECTIVE_UUID}@icook.tw:443?encryption=none&security=tls&sni=${
 
 echo "--------------------------------------------------"
 echo ""
-
+sleep 3600
 
