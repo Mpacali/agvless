@@ -1,0 +1,10 @@
+{
+  "log": { "disabled": false, "level": "info", "timestamp": true },
+  "inbounds": [
+    { "type": "vless", "tag": "proxy", "listen": "::", "listen_port": 2777,
+      "users": [ { "uuid": "fdfc6cef-a888-4423-8f18-6bab27391f75", "flow": "" } ],
+      "transport": { "type": "ws", "path": "/fdfc6cef-a888-4423-8f18-6bab27391f75", "max_early_data": 2048, "early_data_header_name": "Sec-WebSocket-Protocol" }
+    }
+  ],
+  "outbounds": [ { "type": "direct", "tag": "direct" } ]
+}
