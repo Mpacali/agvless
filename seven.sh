@@ -68,10 +68,7 @@ if [ "$TUNNEL_CONNECTED" = "true" ]; then
 else
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     echo "Cloudflare $TUNNEL_MODE Failed"
-else
-    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    echo "Cloudflare $TUNNEL_MODE Failed"
     exit 1
 fi
 
-exit 0
+
