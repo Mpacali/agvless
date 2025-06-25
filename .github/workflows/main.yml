@@ -18,7 +18,7 @@ jobs:
  
     - name: Build Docker image
       run: |
-        docker build -t agvless:latest .
+        docker build -t agvless:hgo .
  
     - name: Log in to Docker Hub
       run: |
@@ -26,5 +26,5 @@ jobs:
  
     - name: Push Docker image
       run: |
-        docker tag agvless:latest pasceger/agvless:latest
-        docker push pasceger/agvless:latest
+        docker tag agvless:hgo pasceger/agvless:hgo
+        docker push pasceger/agvless:hgo
