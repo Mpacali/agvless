@@ -5,7 +5,7 @@
 
 EFFECTIVE_UUID="fdfc6cef-a888-4423-8f18-6bab27391f75"
 
-echo "UUID: $EFFECTIVE_UUID""
+echo "UUID: $EFFECTIVE_UUID"
 
 
 
