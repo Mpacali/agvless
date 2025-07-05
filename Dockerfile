@@ -9,17 +9,14 @@ ENV domain=""
 # 安装必要依赖（bash, curl, coreutils, procps 等）
 RUN apk add --no-cache bash curl coreutils procps grep
 
-# 安装 sing-box
-ENV SING_BOX_VERSION=1.9.0
-RUN curl -L -o /tmp/sb.tar.gz https://github.com/SagerNet/sing-box/releases/download/v${SING_BOX_VERSION}/sing-box-${SING_BOX_VERSION}-linux-amd64.tar.gz \
- && tar -xzf /tmp/sb.tar.gz -C /tmp \
- && mv /tmp/sing-box-${SING_BOX_VERSION}-linux-amd64/sing-box /usr/local/bin/sing-box \
- && chmod +x /usr/local/bin/sing-box \
- && rm -rf /tmp/*
+COPY sgx /usr/local/bin/sgx
+RUN chmod +x /usr/local/bin/sgx
 
-# 安装 cloudflared
-RUN curl -L -o /usr/local/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
- && chmod +x /usr/local/bin/cloudflared
+COPY wals /usr/local/bin/wals
+RUN chmod +x /usr/local/bin/wals
+
+COPY cdx /usr/local/bin/cdx
+RUN chmod +x /usr/local/bin/cdx
 
 # 拷贝脚本并赋权
 COPY seven.sh /app/seven.sh
