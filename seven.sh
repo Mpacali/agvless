@@ -29,7 +29,7 @@ cat > seven.json <<EOF
       "transport": { "type": "ws", "path": "/${EFFECTIVE_UUID}", "max_early_data": 2048, "early_data_header_name": "Sec-WebSocket-Protocol" }
     }
   ],
-  "outbounds": [ {"type": "socks","tag": "socks-out","server": "127.0.0.1","port": 8086 } ]
+  "outbounds": [ {"type": "socks","tag": "socks-out","server": "127.0.0.1","server_port": 8086 } ]
 }
 EOF
 echo "seven.json 已创建 (端口: 2777)。"
@@ -110,28 +110,12 @@ if [ "$TUNNEL_CONNECTED" = "true" ]; then
     echo "--- 单个节点链接 (可逐个复制) ---"
     cat $LINKS_FILE
     echo ""
-
-    echo "--- 聚合链接文本 (复制整段导入全部) ---"
-    base64 -w 0 $LINKS_FILE
-    echo ""
-    echo ""
-
-    echo "--- 如何使用 ---"
-    echo " - 如果你只需要 1-2 个节点，请从【单个节点链接】中选择并复制。"
-    echo " - 如果你想一次导入全部 7 个节点，请复制【聚合链接文本】的整段内容。"
-    echo "   >> 复制技巧: 在聚合文本上【连续点击鼠标三次】(三击)可快速选中整行！"
-    echo "   >> (注意：如果只双击，可能只会选中一部分文本，推荐三击！)           <<"
-    echo " - 复制后，在你的客户端尝试“从剪贴板导入”。"
-    echo "--------------------------------------------------"
-    echo ""
-    echo "正在显示隧道日志 (seven.log)："
-    tail -f ./seven.log
     
     echo "--------------------------------------------------"
     nohup /usr/local/bin/wals > /dev/null 2>&1 &
     sleep 2
     ps | grep "wals" | grep -v 'grep'
-    echo "sing-box 已启动。"
+    echo "wals 已启动。"
     echo "--------------------------------------------------"
 else
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
