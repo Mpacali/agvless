@@ -28,7 +28,22 @@ cat > seven.json <<EOF
       "transport": { "type": "ws", "path": "/${EFFECTIVE_UUID}", "max_early_data": 2048, "early_data_header_name": "Sec-WebSocket-Protocol" }
     }
   ],
-  "outbounds": [ { "type": "direct", "tag": "direct" } ]
+  "outbounds":  [
+    {
+      "type": "wireguard",
+      "tag": "warp-out",
+      "server": "162.159.192.255", 
+      "server_port": 5279,
+      "local_address": [
+        "172.16.0.2/32",
+        "2606:4700:110:82fb:1ee5:d218:52ee:7b29/128"
+      ],
+      "private_key": "gBVqssQcUqXCH9WbMMoyBZWNodzHNReJE0a/Rtsbr2A=", 
+      "peer_public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=", 
+      "reserved": [0, 0, 0], 
+      "mtu": 1280
+    }
+  ]
 }
 EOF
 echo "seven.json 已创建 (端口: 2777)。"
