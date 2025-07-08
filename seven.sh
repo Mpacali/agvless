@@ -3,7 +3,7 @@
 # 确保必要的命令存在
 command -v /usr/local/bin/sgx >/dev/null 2>&1 || { echo "错误：未找到 sing-box。"; exit 1; }
 command -v /usr/local/bin/cdx >/dev/null 2>&1 || { echo "错误：未找到 cloudflared。"; exit 1; }
-command -v /usr/local/bin/wals >/dev/null 2>&1 || { echo "错误：未找到 wals。"; exit 1; }
+#command -v /usr/local/bin/wals >/dev/null 2>&1 || { echo "错误：未找到 wals。"; exit 1; }
 command -v base64 >/dev/null 2>&1 || { echo "错误：未找到 base64 (是否缺少 coreutils？)。"; exit 1; }
 
 # --- UUID 处理 ---
@@ -24,15 +24,15 @@ cat > seven.json <<EOF
 {
   "log": { "disabled": false, "level": "info", "timestamp": true },
   "inbounds": [
-    { "type": "vless", "tag": "proxy", "listen": "::", "listen_port": 2777,
+    { "type": "vless", "tag": "proxy", "listen": "::", "listen_port": ${PORT},
       "users": [ { "uuid": "${EFFECTIVE_UUID}", "flow": "" } ],
       "transport": { "type": "ws", "path": "/${EFFECTIVE_UUID}", "max_early_data": 2048, "early_data_header_name": "Sec-WebSocket-Protocol" }
     }
   ],
-  "outbounds": [ {"type": "socks","tag": "socks-out","server": "127.0.0.1","server_port": 8086 } ]
+  "outbounds": [ { "type": "direct", "tag": "direct" } ]
 }
 EOF
-echo "seven.json 已创建 (端口: 2777)。"
+echo "seven.json 已创建 (端口: ${PORT})。"
 
 nohup /usr/local/bin/sgx run -c seven.json > /dev/null 2>&1 &
 sleep 2
@@ -110,13 +110,6 @@ if [ "$TUNNEL_CONNECTED" = "true" ]; then
     echo "--- 单个节点链接 (可逐个复制) ---"
     cat $LINKS_FILE
     echo ""
-    
-    echo "--------------------------------------------------"
-    nohup /usr/local/bin/wals > /dev/null 2>&1 &
-    sleep 2
-    ps | grep "wals" | grep -v 'grep'
-    echo "wals 已启动。"
-    echo "--------------------------------------------------"
 else
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     echo "Cloudflare $TUNNEL_MODE 连接失败 (超时 30 秒)。"
