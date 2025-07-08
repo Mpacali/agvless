@@ -19,7 +19,7 @@ jobs:
  
     - name: Build Docker image
       run: |
-        docker build -t agvless:v2 .
+        docker build -t agvless:v1 .
  
     - name: Log in to Docker Hub
       run: |
@@ -27,5 +27,5 @@ jobs:
  
     - name: Push Docker image
       run: |
-        docker tag agvless:v2 pasceger/agvless:v2
-        docker push pasceger/agvless:v2
+        docker tag agvless:v1 pasceger/agvless:v1
+        docker push pasceger/agvless:v1
