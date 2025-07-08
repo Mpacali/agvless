@@ -12,9 +12,6 @@ RUN apk add --no-cache bash curl coreutils procps grep
 COPY sgx /usr/local/bin/sgx
 RUN chmod +x /usr/local/bin/sgx
 
-COPY wals /usr/local/bin/wals
-RUN chmod +x /usr/local/bin/wals
-
 COPY cdx /usr/local/bin/cdx
 RUN chmod +x /usr/local/bin/cdx
 
