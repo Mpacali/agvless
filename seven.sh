@@ -1,9 +1,8 @@
 #!/bin/bash
 
 # 确保必要的命令存在
-command -v /usr/local/bin/sgx >/dev/null 2>&1 || { echo "错误：未找到 sing-box。"; exit 1; }
-command -v /usr/local/bin/cdx >/dev/null 2>&1 || { echo "错误：未找到 cloudflared。"; exit 1; }
-#command -v /usr/local/bin/wals >/dev/null 2>&1 || { echo "错误：未找到 wals。"; exit 1; }
+command -v /usr/local/bin/sing-box >/dev/null 2>&1 || { echo "错误：未找到 sing-box。"; exit 1; }
+command -v /usr/local/bin/cloudflared >/dev/null 2>&1 || { echo "错误：未找到 cloudflared。"; exit 1; }
 command -v base64 >/dev/null 2>&1 || { echo "错误：未找到 base64 (是否缺少 coreutils？)。"; exit 1; }
 
 # --- UUID 处理 ---
@@ -13,7 +12,7 @@ if [ -n "$uuid" ]; then
     echo "--------------------------------------------------"
     echo "检测到用户提供的 UUID: $EFFECTIVE_UUID"
 else
-    EFFECTIVE_UUID=$(/usr/local/bin/sgx generate uuid)
+    EFFECTIVE_UUID=$(/usr/local/bin/sing-box generate uuid)
     echo "--------------------------------------------------"
     echo "未提供 UUID，已自动生成: $EFFECTIVE_UUID"
 fi
@@ -34,9 +33,9 @@ cat > seven.json <<EOF
 EOF
 echo "seven.json 已创建 (端口: ${PORT})。"
 
-nohup /usr/local/bin/sgx run -c seven.json > /dev/null 2>&1 &
+nohup /usr/local/bin/sing-box run -c seven.json > /dev/null 2>&1 &
 sleep 2
-ps | grep "sgx" | grep -v 'grep'
+ps | grep "sing-box" | grep -v 'grep'
 echo "sing-box 已启动。"
 echo "--------------------------------------------------"
 
@@ -54,7 +53,7 @@ if [ -n "$token" ] && [ -n "$domain" ]; then
     echo "隧道域名将是: $FINAL_DOMAIN"
     echo "Cloudflare Tunnel Token: [已隐藏]"
     echo "正在启动固定的 Cloudflare 隧道..."
-    nohup /usr/local/bin/cdx tunnel --no-autoupdate run --token "${token}" > ./seven.log 2>&1 &
+    nohup /usr/local/bin/cloudflared tunnel --no-autoupdate run --token "${token}" > ./seven.log 2>&1 &
 
     echo "正在等待 Cloudflare 固定隧道连接... (最多 30 秒)"
     for attempt in $(seq 1 15); do
@@ -71,7 +70,7 @@ else
     TUNNEL_MODE="临时隧道 (Temporary Tunnel)"
     echo "未提供 token 和/或 domain 环境变量，将使用【临时隧道模式】。"
     echo "正在启动临时的 Cloudflare 隧道..."
-    nohup /usr/local/bin/cdx tunnel --url http://localhost:2777 --edge-ip-version auto --no-autoupdate --protocol http2 > ./seven.log 2>&1 &
+    nohup /usr/local/bin/cloudflared tunnel --url http://localhost:2777 --edge-ip-version auto --no-autoupdate --protocol http2 > ./seven.log 2>&1 &
 
     echo "正在等待 Cloudflare 临时隧道 URL... (最多 30 秒)"
     for attempt in $(seq 1 15); do
@@ -110,6 +109,8 @@ if [ "$TUNNEL_CONNECTED" = "true" ]; then
     echo "--- 单个节点链接 (可逐个复制) ---"
     cat $LINKS_FILE
     echo ""
+
+
 else
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     echo "Cloudflare $TUNNEL_MODE 连接失败 (超时 30 秒)。"
