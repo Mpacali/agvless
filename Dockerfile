@@ -1,7 +1,7 @@
 FROM alpine:3.20
 
 # 环境变量（可被 docker-compose 或 docker run -e 覆盖）
-ENV PORT=2778
+ENV PORT=2777
 ENV uuid=""
 ENV token=""
 ENV domain=""
